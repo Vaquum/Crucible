@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import importlib
+import json
 from pathlib import Path
 
 import pytest
 
 import crucible.serve as serve
+from crucible.datasets import DatasetRef, base_frame, dataset_meta, parse_ref
+from crucible.scatter import compute_scatter
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ASSETS = REPO_ROOT / "src" / "crucible" / "assets"
@@ -15,89 +18,72 @@ def test_package_imports() -> None:
     assert importlib.import_module("crucible").__name__ == "crucible"
 
 
-def test_app_config_endpoint_payload_uses_mill_contract(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(serve, "API_UPSTREAM", "")
-    monkeypatch.setattr(serve, "meta", lambda: {"start": "2026-05-14T10:28:00", "end": "2026-06-06T06:55:53", "files": []})
+def test_app_config_lists_sources_with_relative_endpoints() -> None:
     payload = serve.app_config()
     assert payload["app_name"] == "Crucible"
-    assert payload["default_block_ms"] == 125
-    assert payload["endpoints"]["meta"] == "/api/meta"
-    assert "mid" in payload["fields"]
+    endpoints = payload["endpoints"]
+    for key in ("klines", "sweeps", "uploads", "upload", "clear_uploads", "meta", "scatter"):
+        assert key in endpoints
+    assert all(not value.startswith("/") for value in endpoints.values())
 
 
-def test_app_config_uses_upstream_meta_without_proxying_it(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(serve, "API_UPSTREAM", "http://127.0.0.1:1")
-    monkeypatch.setattr(serve, "upstream_meta", lambda: {"start": "2026-05-14T10:28:00", "end": "2026-06-06T06:55:53", "files": []})
-    payload = serve.app_config()
-    assert payload["app_name"] == "Crucible"
-    assert payload["endpoints"]["scatter"] == "/api/scatter"
-
-
-def test_static_assets_are_packaged_and_proxy_relative() -> None:
+def test_static_assets_packaged_and_proxy_relative() -> None:
     html = (ASSETS / "index.html").read_text(encoding="utf-8")
     assert (ASSETS / "app.js").is_file()
     assert (ASSETS / "style.css").is_file()
     assert 'href="assets/style.css' in html
     assert 'src="assets/app.js' in html
-    assert 'id="timelinePlay"' in html
-    assert 'id="timeline"' in html
-    assert 'id="timelineSpeed"' in html
-    assert 'id="timelineLabel"' not in html
-    assert 'id="start" type="datetime-local" step="0.001"' in html
-    assert 'id="end" type="datetime-local" step="0.001"' in html
+    assert 'id="datasetToggle"' in html
+    assert 'id="datasetModal"' in html
+    for source in ("klines", "sweep", "upload"):
+        assert f'data-source-card="{source}"' in html
     assert 'href="/' not in html
     assert 'src="/' not in html
 
 
+def test_groupby_controls_removed() -> None:
+    html = (ASSETS / "index.html").read_text(encoding="utf-8")
+    assert 'id="barInterval"' not in html
+    assert 'id="barFunction"' not in html
+    assert "Groupby" not in html
+
+
 def test_browser_api_calls_are_proxy_relative() -> None:
     js = (ASSETS / "app.js").read_text(encoding="utf-8")
-    assert 'fetch("api/meta")' in js
+    assert 'fetch("app-config")' in js
+    assert '"/api/' not in js
     assert "fetch(`/api/" not in js
-    assert 'fetch("/api/' not in js
 
 
-def test_timeline_playback_preserves_window_and_steps_by_groupby() -> None:
-    js = (ASSETS / "app.js").read_text(encoding="utf-8")
-    assert "function blockStepMs()" in js
-    assert "Math.round(Number(el.barInterval.value) * 1000)" in js
-    assert "let timelineDomainStart" in js
-    assert "function setSelectedDateRange(start, end" in js
-    assert "function timelineStepForEnd(end" in js
-    assert 'iso.slice(20, 23) === "000"' in js
-    assert "function playbackDelayMs()" in js
-    assert "function playbackStepCount()" in js
-    assert "Math.ceil(maxStep / width)" in js
-    assert "function playLoop()" in js
-    assert "setTimeout(playLoop, playbackDelayMs())" in js
-    assert "requestAnimationFrame(playLoop)" not in js
-    assert 'el.timeline.value = "0"' in js
-    assert "if (!advanceTimelineStep()) return;" in js
-    assert "setRangeFromTimeline" in js
-    assert "pointerdown" in js
+def test_klines_loader_uses_limen() -> None:
+    source = (REPO_ROOT / "src" / "crucible" / "datasets.py").read_text(encoding="utf-8")
+    assert "from limen import HistoricalData" in source
+    assert "get_arrow_file" in source
 
 
-def test_canvas_labels_are_hidden_and_timeline_speed_is_explicit() -> None:
-    html = (ASSETS / "index.html").read_text(encoding="utf-8")
-    css = (ASSETS / "style.css").read_text(encoding="utf-8")
-    js = (ASSETS / "app.js").read_text(encoding="utf-8")
-    assert '<select id="timelineSpeed"' in html
-    for speed in ("1", "2", "4", "8", "16", "32"):
-        assert f'<option value="{speed}">{speed}x</option>' in html
-    assert "#status, #tooltip { display: none !important; }" in css
-    assert 'addEventListener("mousemove"' not in js
-    assert 'fillText("x=0"' not in js
-    assert 'fillText("y=0"' not in js
+def test_parse_ref_validates_source() -> None:
+    assert parse_ref({"source": ["klines"], "series": ["time_1h"]}).series == "time_1h"
+    with pytest.raises(ValueError):
+        parse_ref({"source": ["bogus"]})
+    with pytest.raises(ValueError):
+        parse_ref({"source": ["klines"], "series": ["../escape"]})
 
 
-def test_current_hour_preset_uses_latest_data_hour_not_exclusive_end_hour() -> None:
-    js = (ASSETS / "app.js").read_text(encoding="utf-8")
-    assert "hourStart(new Date(end.getTime() - 1))" in js
-
-
-def test_initial_query_is_bounded_to_latest_four_hours() -> None:
-    js = (ASSETS / "app.js").read_text(encoding="utf-8")
-    assert "availableEnd.getTime() - 4 * 60 * 60 * 1000" in js
-    assert "el.start.value = meta.start" not in js
+def test_csv_upload_typing_and_categorical_scatter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    uploads = tmp_path / "uploads"
+    uploads.mkdir()
+    (uploads / "demo.csv").write_text("a,b,grp\n1,2,x\n3,4,y\n5,6,x\n", encoding="utf-8")
+    monkeypatch.setattr("crucible.datasets.UPLOAD_DIR", uploads)
+    base_frame.cache_clear()
+    ref = DatasetRef("upload", upload_id="demo.csv")
+    meta = dataset_meta(ref)
+    kinds = {column["name"]: column["kind"] for column in meta["columns"]}
+    assert kinds == {"a": "numeric", "b": "numeric", "grp": "categorical"}
+    assert meta["time_column"] is None
+    payload = json.loads(compute_scatter(ref, "a", "b", "grp", "a", 1.0, "", ""))
+    assert payload["points"] == 3
+    assert payload["color_categories"] == ["x", "y"]
+    base_frame.cache_clear()
 
 
 def test_auth_env_is_required(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -117,7 +103,10 @@ def test_delivery_files_match_sister_app_shape() -> None:
     assert 'CMD ["python", "-m", "crucible"]' in dockerfile
     assert "EXPOSE 8877" in dockerfile
     assert "services:\n  crucible:" in compose
-    assert "APP_USERNAME" in compose
-    assert "API_SECRET" in compose
-    assert "${CRUCIBLE_PORT:-8877}:8877" in compose
     assert "target: /data/experiments" in compose
+    assert "target: /opt/arrow" in compose
+    assert "source: arrow" in compose
+    assert "external: true" in compose
+    assert "CRUCIBLE_ARROW_DIR: /opt/arrow" in compose
+    assert "${CRUCIBLE_PORT:-8877}:8877" in compose
+    assert "ORIGO_" not in compose

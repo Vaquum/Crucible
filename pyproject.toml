@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Crucible"
-version = "0.1.0"
-description = "Rubric scatter explorer for Origo spot-trade and depth20 Arrow panels."
+version = "0.2.0"
+description = "Scatter explorer for klines, Furnace sweep results, and uploaded datasets."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "clickhouse-connect>=0.7",
   "numpy>=2.0",
-  "pyarrow>=15.0",
+  "polars>=1.0",
+  "vaquum_limen @ git+https://github.com/Vaquum/Limen.git@main",
 ]
 
 [project.scripts]
