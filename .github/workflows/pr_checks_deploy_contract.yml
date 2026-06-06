@@ -1,0 +1,149 @@
+name: pr_checks_deploy_contract
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-contract:
+    name: deploy-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install 'pyyaml==6.0.2'
+
+      - name: Dockerfile exposes Crucible port
+        run: |
+          set -euo pipefail
+          test "$(grep -c 'EXPOSE 8877' Dockerfile)" -ge 1
+
+      - name: Dockerfile starts package module
+        run: |
+          set -euo pipefail
+          test "$(grep -c 'CMD \["python", "-m", "crucible"\]' Dockerfile)" -ge 1
+
+      - name: Compose service contract
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          import sys
+          import yaml
+
+          data = yaml.safe_load(open('deploy/docker-compose.yml'))
+          service = (data.get('services') or {}).get('crucible') or {}
+          errors = []
+          if not service:
+              errors.append('missing services.crucible')
+          if service.get('init') is not True:
+              errors.append('services.crucible.init must be true')
+          env = service.get('environment') or {}
+          for key in ('APP_USERNAME', 'APP_PASSWORD', 'API_SECRET'):
+              if key not in env:
+                  errors.append(f'missing required environment {key}')
+          if env.get('CRUCIBLE_HOST') != '0.0.0.0':
+              errors.append('CRUCIBLE_HOST must be 0.0.0.0 in container')
+          if str(env.get('CRUCIBLE_PORT')) != '8877':
+              errors.append('CRUCIBLE_PORT must be 8877 in container')
+          ports = service.get('ports') or []
+          if '${CRUCIBLE_PORT:-8877}:8877' not in ports:
+              errors.append('ports must include ${CRUCIBLE_PORT:-8877}:8877')
+          mounts = service.get('volumes') or []
+          first = mounts[0] if mounts else {}
+          if first.get('type') != 'bind':
+              errors.append('first mount must be a bind')
+          if first.get('source') != '${CRUCIBLE_HOST_DATA_ROOT:-/data/experiments}':
+              errors.append('first mount source must default to /data/experiments')
+          if first.get('target') != '/data/experiments':
+              errors.append('first mount target must be /data/experiments')
+          if first.get('read_only') is True:
+              errors.append('first mount must be writable')
+          if 'volumes' in (data or {}):
+              errors.append('top-level named volumes are forbidden')
+          if errors:
+              print('::error::Crucible deploy contract failed:')
+              for error in errors:
+                  print(f'  - {error}')
+              sys.exit(1)
+          PY
+
+      - name: Deploy workflow validates allowlisted data root
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          import os
+          import subprocess
+          import sys
+          import yaml
+
+          workflow = yaml.safe_load(open('.github/workflows/deploy.yml'))
+          steps = workflow['jobs']['deploy']['steps']
+          step = next((item for item in steps if item.get('name') == 'Validate host data root'), None)
+          if step is None:
+              print('::error::deploy.yml is missing Validate host data root')
+              sys.exit(1)
+          script = step['run']
+          cases = [
+              ('/data/experiments', 0),
+              ('/data/notebooks', 1),
+              ('/data/expriments', 1),
+              ('/data/experiments/sub', 1),
+              ('/data/experiments/', 1),
+              ('', 1),
+          ]
+          errors = []
+          for root, expected in cases:
+              env = os.environ.copy()
+              env['CRUCIBLE_HOST_DATA_ROOT'] = root
+              result = subprocess.run(['bash', '-c', script], env=env, capture_output=True, text=True)
+              if (result.returncode == 0) != (expected == 0):
+                  errors.append(f'{root!r}: expected {expected}, got {result.returncode}')
+          if errors:
+              print('::error::host data root validator failed:')
+              for error in errors:
+                  print(f'  - {error}')
+              sys.exit(1)
+          PY
+
+      - name: No destructive data operations
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          pattern = re.compile(r'(rm -rf /data|chown -R /data|chmod -R /data|docker compose .* down .* -v|docker volume (rm|prune)|docker system prune)')
+          paths = [*pathlib.Path('.github/workflows').glob('*.yml'), pathlib.Path('Dockerfile'), pathlib.Path('deploy/docker-compose.yml')]
+          hits = []
+          for path in paths:
+              for number, line in enumerate(path.read_text().splitlines(), start=1):
+                  if path.name == 'pr_checks_deploy_contract.yml':
+                      continue
+                  if pattern.search(line):
+                      hits.append(f'{path}:{number}: {line.strip()}')
+          if hits:
+              print('::error::destructive data operation found:')
+              for hit in hits:
+                  print(hit)
+              sys.exit(1)
+          PY

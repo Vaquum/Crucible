@@ -1,0 +1,27 @@
+services:
+  crucible:
+    image: ${CRUCIBLE_IMAGE:?CRUCIBLE_IMAGE must be set}
+    init: true
+    environment:
+      APP_USERNAME: ${APP_USERNAME:?APP_USERNAME must be set}
+      APP_PASSWORD: ${APP_PASSWORD:?APP_PASSWORD must be set}
+      API_SECRET: ${API_SECRET:?API_SECRET must be set}
+      CRUCIBLE_HOST: 0.0.0.0
+      CRUCIBLE_PORT: 8877
+      CRUCIBLE_DATA_ROOT: /data/experiments/crucible
+      ORIGO_ARROW_DIR: /data/experiments/crucible/binance_daily_spot_trades
+      ORIGO_PANEL_DIR: /data/experiments/crucible/btc_master_panel
+    ports:
+      - "${CRUCIBLE_PORT:-8877}:8877"
+    volumes:
+      - type: bind
+        source: ${CRUCIBLE_HOST_DATA_ROOT:-/data/experiments}
+        target: /data/experiments
+        read_only: false
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8877/health', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped

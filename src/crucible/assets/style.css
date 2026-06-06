@@ -1,0 +1,256 @@
+/* Crucible — sister app to Mill and Furnace. The :root block below is copied
+   verbatim from Mill's design system (Design-Guidelines.md sister-app checklist);
+   every component rule uses semantic tokens only, no palette hex outside :root. */
+:root {
+  /* palette — literals; never reference directly in rules */
+  --c-near-black: #121212;
+  --c-warm-black: #231F20;
+  --c-dark-gray:  #444444;
+  --c-mid-gray:   #808080;
+  --c-light-gray: #D3D3D3;
+  --c-pale-gray:  #F3F3F3;
+  --c-off-white:  #F8F8F8;
+  --c-pale-pink:  #FCE2EB;
+  --c-pink:       #EAA3C8;
+  --c-magenta:    #DC65A6;
+  --c-coral:      #F16068;
+  --c-lavender:   #BCABD3;
+  --c-yellow:     #DDD941;
+
+  /* surfaces */
+  --bg:        var(--c-near-black);
+  --highlight: var(--c-warm-black);  /* subtle lift: row/col hover only */
+
+  /* borders */
+  --border:        var(--c-dark-gray);
+  --border-subtle: var(--c-warm-black);
+  --border-strong: var(--c-mid-gray);
+
+  /* text */
+  --fg:   var(--c-off-white);
+  --fg-1: var(--c-pale-gray);
+  --fg-2: var(--c-light-gray);
+  --fg-3: var(--c-mid-gray);
+
+  /* semantics — one palette hue, one meaning */
+  --accent:   var(--c-yellow);    /* focus, toggles, copy confirm */
+  --pos:      var(--c-lavender);  /* positive values */
+  --neg:      var(--c-coral);     /* negative values */
+  --danger:   var(--c-magenta);   /* destructive actions */
+
+  /* QC grades */
+  --grade-f: var(--c-pink);
+
+  /* syntax — neutral scale only */
+  --syntax-fg:      var(--fg);
+  --syntax-base:    var(--fg-2);
+  --syntax-dim:     var(--fg-3);
+  --syntax-muted:   var(--fg-1);
+
+  --font-sans: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+  --t: 13px;
+  --t-icon: 11px;
+  --leading-tight: 1;
+  --leading-body: 1.4;
+  --track-label: 0.08em;
+
+  --text-body: 400 var(--t)/var(--leading-body) var(--font-sans);
+  --text-ui: 400 var(--t)/var(--leading-tight) var(--font-sans);
+  --text-label: 500 var(--t)/var(--leading-tight) var(--font-sans);
+  --text-data: 400 var(--t)/var(--leading-tight) var(--font-mono);
+  --text-data-em: 500 var(--t)/var(--leading-tight) var(--font-mono);
+  --text-code: 400 var(--t)/var(--leading-body) var(--font-mono);
+  --text-icon: 500 var(--t-icon)/var(--leading-tight) var(--font-sans);
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+
+  /* rhythm — literals; never reference directly in rules */
+  --row-h:           36px;
+  --col-dt:          184px;
+  --col-metric:      240px;
+  --col-feature:     132px;
+  --col-row-group-min: 220px;
+  --field-w-sm:      56px;
+  --field-w-md:      64px;
+  --tip-max-w:       360px;
+  --radio-size:      14px;
+  --radio-dot:       6px;
+  --scrollbar-w:     10px;
+  --radius:          2px;
+  --border-w:        1px;
+  --border-w-accent: 2px;
+  --dur:             80ms;
+  --ease:            ease;
+  --opacity-drag:    0.4;
+  --opacity-muted:   0.5;
+  --tab-size:        2;
+
+  /* rhythm — derived */
+  --transition:      var(--dur) var(--ease);
+  --control-h:       var(--row-h);
+  --icon-btn-w:      var(--control-h);
+  --caret-w:         var(--s-2);
+  --chevron-w:       var(--s-2);
+  --cell-pad-x:      var(--s-4);
+  --cell-pad-label:  var(--s-5);
+  --chrome-pad-y:    var(--s-4);
+  --chrome-pad-x:    var(--s-5);
+  --pane-pad:        var(--s-5);
+  --z-popover:       50;
+  --z-tip:           100;
+}
+
+* { box-sizing: border-box; }
+
+/* typography roles — only entry points for font: in rules */
+.t-body  { font: var(--text-body); }
+.t-ui    { font: var(--text-ui); }
+.t-label { font: var(--text-label); letter-spacing: var(--track-label); text-transform: uppercase; }
+.t-data  { font: var(--text-data); font-variant-numeric: tabular-nums; }
+.t-code  { font: var(--text-code); font-variant-numeric: tabular-nums slashed-zero; }
+.t-icon  { font: var(--text-icon); }
+
+html { color-scheme: dark; }
+html, body {
+  margin: 0; padding: 0;
+  height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--text-body);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body { display: flex; flex-direction: column; }
+
+::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* chrome — control bar */
+.controls {
+  flex: 0 0 auto;
+  display: grid; gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-bottom: var(--border-w) solid var(--border);
+  background: var(--bg);
+}
+.control-row { display: grid; gap: var(--s-2); align-items: center; min-width: 0; }
+.filter-row { grid-template-columns: var(--control-h) minmax(120px, .6fr) minmax(120px, .55fr) minmax(150px, .75fr) minmax(190px, .9fr) minmax(110px, .45fr); }
+.encoding-row { grid-template-columns: repeat(4, minmax(230px, 1fr)); padding-top: var(--s-2); border-top: var(--border-w) solid var(--border-subtle); }
+.timeline-row { grid-template-columns: var(--control-h) minmax(0, 1fr) calc(var(--field-w-md) + var(--s-2)); padding-top: var(--s-2); border-top: var(--border-w) solid var(--border-subtle); }
+
+/* labels & encoding channels — uppercase 500 sans, secondary chrome */
+label, .channel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-2);
+  align-items: center;
+  min-width: 0;
+  font: var(--text-label);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+.channel { grid-template-columns: auto minmax(0, 1fr) var(--field-w-sm) var(--control-h); }
+.channel > span, label > span { white-space: nowrap; }
+
+/* controls — inputs, selects, buttons all share one density and border */
+input, select, button {
+  width: 100%;
+  height: var(--control-h);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg);
+  font: var(--text-ui);
+  padding: 0 var(--s-2);
+  transition: border-color var(--transition), color var(--transition);
+}
+input:hover, select:hover, button:hover { border-color: var(--border-strong); }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: none; border-color: var(--fg-2); }
+input:disabled, select:disabled { color: var(--fg-3); opacity: var(--opacity-muted); cursor: not-allowed; }
+input[type="number"], input[type="datetime-local"] { font: var(--text-data); font-variant-numeric: tabular-nums; }
+
+select {
+  appearance: none; -webkit-appearance: none;
+  padding: 0 var(--s-5) 0 var(--s-3);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path fill='%23808080' d='M2 4l3 3 3-3z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right var(--s-2) center;
+}
+select option { background: var(--bg); color: var(--fg); }
+#timelineSpeed { min-width: 0; }
+
+/* Log / Z toggles — accent on active, mirroring Mill's .active treatment */
+.toggle { display: block; position: relative; min-width: 0; cursor: pointer; }
+.toggle input { position: absolute; inset: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.toggle span {
+  display: grid; place-items: center;
+  height: var(--control-h);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  color: var(--fg-2);
+  font: var(--text-label);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  transition: border-color var(--transition), color var(--transition);
+}
+.toggle:hover span { border-color: var(--border-strong); color: var(--fg); }
+.toggle input:checked + span { border-color: var(--accent); color: var(--accent); }
+.toggle input:focus-visible + span { outline: none; border-color: var(--accent); }
+
+/* icon buttons — borderless, idle at --fg-2, accent when active */
+.icon-button {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--fg-2);
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+.icon-button:hover { color: var(--fg); }
+.icon-button:focus-visible { outline: none; color: var(--fg); }
+.icon-button svg { width: var(--s-4); height: var(--s-4); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.play-button { font: var(--text-ui); }
+.play-button:hover { color: var(--fg); }
+.play-button[aria-pressed="true"] { color: var(--accent); }
+
+/* timeline range — yellow accent track/thumb on the dark bar */
+#timeline { border: none; background: transparent; padding: 0; accent-color: var(--accent); cursor: pointer; }
+#timeline:hover { border: none; }
+
+/* date popover — dark surface, strong hairline, no shadow (Mill: --highlight is the only lift) */
+.date-panel {
+  position: absolute;
+  top: calc(var(--control-h) + var(--s-3));
+  left: var(--s-3);
+  z-index: var(--z-popover);
+  display: grid;
+  grid-template-columns: repeat(2, calc(var(--col-dt) + var(--s-5)));
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border: var(--border-w) solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.date-panel[hidden] { display: none; }
+.date-presets { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
+.date-presets button { color: var(--fg-2); }
+.date-presets button:hover { color: var(--fg); }
+
+/* chart surface */
+main { position: relative; flex: 1 1 auto; min-height: 0; }
+canvas { display: block; width: 100%; height: 100%; background: var(--bg); }
+#status, #tooltip { display: none !important; }
+
+@media (max-width: 1100px) { .filter-row, .encoding-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .timeline-row { grid-template-columns: var(--control-h) minmax(0, 1fr) calc(var(--field-w-md) + var(--s-2)); } .icon-button { width: var(--control-h); } }
+@media (max-width: 620px) { .filter-row, .encoding-row { grid-template-columns: 1fr; } .timeline-row { grid-template-columns: var(--control-h) minmax(0, 1fr) calc(var(--field-w-md) + var(--s-2)); } .date-panel { left: var(--s-2); right: var(--s-2); grid-template-columns: 1fr; } }

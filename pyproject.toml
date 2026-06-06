@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Crucible"
+version = "0.1.0"
+description = "Rubric scatter explorer for Origo spot-trade and depth20 Arrow panels."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "clickhouse-connect>=0.7",
+  "numpy>=2.0",
+  "pyarrow>=15.0",
+]
+
+[project.scripts]
+crucible = "crucible.serve:main"
+
+[project.optional-dependencies]
+dev = [
+  "coverage[toml]>=7.6",
+  "pyright==1.1.408",
+  "pytest",
+  "ruff==0.15.11",
+  "vulture>=2.14",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+crucible = ["assets/*.html", "assets/*.js", "assets/*.css", "py.typed"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = ["src/crucible"]
+exclude = ["**/__pycache__", "build", "dist", "tests"]
+stubPath = "stubs"
+reportExplicitAny = "error"
+reportMissingImports = "error"
+reportMissingTypeStubs = "error"
+reportUnknownArgumentType = "error"
+reportUnknownMemberType = "error"
+reportUnknownVariableType = "error"
+reportUnknownLambdaType = "error"
+reportUnknownParameterType = "error"
+reportMissingParameterType = "error"
+reportConstantRedefinition = "error"
+reportImportCycles = "error"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [".git", "__pycache__", "build", "dist", "tests/fixtures"]
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "RUF", "BLE", "ANN", "C901", "PLR0912", "PLR0913", "PLR0915", "T201", "FIX001", "FIX002", "FIX003", "FIX004", "ERA001", "D200", "D205", "D415", "PIE790"]
+ignore = ["E501"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 8
+max-branches = 20
+max-statements = 80
+
+[tool.ruff.lint.per-file-ignores]
+"src/crucible/serve.py" = ["ANN401", "BLE001", "C901", "PLR0912", "PLR0913", "PLR0915", "D200", "D205", "D415"]
+"tests/**/*.py" = ["S101", "ANN", "BLE001", "PLR0912", "PLR0913", "PLR0915", "D200", "D205", "D415"]
+"tools/**/*.py" = ["C901", "PLR0912", "PLR0913", "PLR0915", "T201", "FIX001", "FIX002", "FIX003", "FIX004", "ERA001", "D200", "D205", "D415"]
+"scripts/**/*.py" = ["C901", "PLR0912", "PLR0913", "PLR0915", "T201", "FIX001", "FIX002", "FIX003", "FIX004", "ERA001", "D200", "D205", "D415"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["crucible"]
+
+[tool.vulture]
+paths = ["src/crucible"]
+min_confidence = 80
+
+[tool.coverage.run]
+branch = true
+source = ["src/crucible"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.json]
+output = "coverage.json"
