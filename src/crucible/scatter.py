@@ -25,6 +25,8 @@ FloatArray = npt.NDArray[np.float64]
 
 
 def _column_array(frame: pl.DataFrame, column: str) -> tuple[FloatArray, list[str] | None]:
+    if column not in frame.columns:
+        raise ValueError(f'unknown column: {column!r}')
     series = frame.get_column(column)
     if series.dtype.is_numeric():
         return series.cast(pl.Float64).to_numpy(), None

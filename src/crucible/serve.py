@@ -76,7 +76,9 @@ class Handler(SimpleHTTPRequestHandler):
     def translate_path(self, path: str) -> str:
         raw_path = urlparse(path).path
         clean = raw_path.removeprefix('/assets/').lstrip('/') or 'index.html'
-        return str(ASSET_DIR / clean)
+        root = ASSET_DIR.resolve()
+        candidate = (root / clean).resolve()
+        return str(candidate if candidate.is_relative_to(root) else root / 'index.html')
 
     def send_json(self, status: HTTPStatus, payload: str | dict[str, object]) -> None:
         body = payload if isinstance(payload, str) else json.dumps(payload, separators=(',', ':'))
@@ -146,10 +148,12 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if parsed.path == '/api/upload':
                 name = datasets.save_upload(_first(parse_qs(parsed.query), 'filename'), self._read_body())
+                compute_scatter.cache_clear()
                 self.send_json(HTTPStatus.OK, {'upload': name})
                 return
             if parsed.path == '/api/clear-uploads':
                 datasets.clear_uploads()
+                compute_scatter.cache_clear()
                 self.send_json(HTTPStatus.OK, {'cleared': True})
                 return
         except (ValueError, FileNotFoundError, KeyError) as exc:

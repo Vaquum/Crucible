@@ -106,7 +106,15 @@ async function renderSweepPicker() {
     const head = document.createElement("button");
     head.type = "button";
     head.className = "tree-exp-head";
-    head.innerHTML = `<span class="caret t-icon">▶</span><span>${experiment.experiment}</span><span class="source-card-note">${experiment.rounds.length}</span>`;
+    const caret = document.createElement("span");
+    caret.className = "caret t-icon";
+    caret.textContent = "▶";
+    const expName = document.createElement("span");
+    expName.textContent = experiment.experiment;
+    const expCount = document.createElement("span");
+    expCount.className = "source-card-note";
+    expCount.textContent = String(experiment.rounds.length);
+    head.append(caret, expName, expCount);
     head.addEventListener("click", () => {
       const open = node.classList.toggle("open");
       head.querySelector(".caret").textContent = open ? "▼" : "▶";
@@ -175,7 +183,7 @@ async function selectDataset(ref) {
   closeModal();
   el.status.value = "Loading";
   try {
-    meta = await getJson(`api/meta?${refParams(ref).toString()}`);
+    meta = await getJson(`${endpoints.meta || "api/meta"}?${refParams(ref).toString()}`);
   } catch (error) {
     el.status.value = error.message;
     return;
@@ -325,6 +333,8 @@ function playLoop() { if (!playTimer) return; if (!advanceTimelineStep()) return
 function setPlaying(playing) {
   if (playTimer) { clearTimeout(playTimer); playTimer = undefined; }
   el.timelinePlay.setAttribute("aria-pressed", String(playing));
+  el.timelinePlay.setAttribute("aria-label", playing ? "Pause timeline" : "Play timeline");
+  el.timelinePlay.title = playing ? "Pause timeline" : "Play timeline";
   el.timelinePlayIcon.textContent = playing ? "Ⅱ" : "▶";
   if (!playing) return;
   if (Number(el.timeline.value) >= Number(el.timeline.max)) { el.timeline.value = "0"; setRangeFromTimeline(0); }
@@ -378,7 +388,7 @@ async function run() {
   activeRequest = request;
   el.status.value = "Loading";
   try {
-    const response = await fetch(`api/scatter?${scatterQs()}`, { signal: request.signal });
+    const response = await fetch(`${endpoints.scatter || "api/scatter"}?${scatterQs()}`, { signal: request.signal });
     if (!response.ok) throw new Error(await response.text());
     const data = await response.json();
     if (activeRequest !== request) return;

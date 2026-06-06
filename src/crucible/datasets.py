@@ -11,7 +11,7 @@ import os
 import re
 import shutil
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 
@@ -99,8 +99,11 @@ def base_frame(ref: DatasetRef) -> pl.DataFrame:
 
 
 def time_column(frame: pl.DataFrame) -> str | None:
+    # A datetime/timestamp column drives the time controls only when it is a
+    # real temporal dtype; an epoch-int column named "timestamp" stays a plain
+    # numeric channel (and never reaches the datetime-casting path below).
     for name in frame.columns:
-        if name.lower() in TIME_COLUMN_NAMES:
+        if name.lower() in TIME_COLUMN_NAMES and frame.schema[name].is_temporal():
             return name
     return None
 
@@ -137,6 +140,15 @@ def _iso(value: object) -> str:
     return value.replace(tzinfo=None, microsecond=0).strftime('%Y-%m-%dT%H:%M:%S')
 
 
+def _iso_end(value: object) -> str:
+    # Ceil the reported end to the next whole second so the default full range
+    # [start, end) — with the exclusive `< end` window filter — still includes
+    # the max-timestamp row (and any sub-second rows in the final second).
+    if not isinstance(value, datetime):
+        raise ValueError(f'time column bound is not a datetime: {value!r}')
+    return (value.replace(tzinfo=None, microsecond=0) + timedelta(seconds=1)).strftime('%Y-%m-%dT%H:%M:%S')
+
+
 def dataset_meta(ref: DatasetRef) -> dict[str, object]:
     frame = base_frame(ref)
     column = time_column(frame)
@@ -147,7 +159,7 @@ def dataset_meta(ref: DatasetRef) -> dict[str, object]:
     }
     if column is not None and frame.height:
         meta['start'] = _iso(frame[column].min())
-        meta['end'] = _iso(frame[column].max())
+        meta['end'] = _iso_end(frame[column].max())
     return meta
 
 
@@ -168,7 +180,7 @@ def list_klines() -> list[dict[str, str]]:
     series = [
         entry.name
         for entry in ARROW_DIR.iterdir()
-        if entry.is_dir() and (entry / ARROW_LATEST_NAME).is_file()
+        if entry.is_dir() and _SAFE_NAME.fullmatch(entry.name) and (entry / ARROW_LATEST_NAME).is_file()
     ]
     out: list[dict[str, str]] = []
     for name in sorted(series, key=_klines_sort_key):
@@ -183,12 +195,12 @@ def list_sweeps() -> list[dict[str, object]]:
     experiments: list[dict[str, object]] = []
     for exp_dir in sorted(SWEEP_ROOT.iterdir()):
         rounds_dir = exp_dir / 'rounds'
-        if not rounds_dir.is_dir():
+        if not (_SAFE_NAME.fullmatch(exp_dir.name) and rounds_dir.is_dir()):
             continue
         rounds = [
             round_dir.name
             for round_dir in sorted(rounds_dir.iterdir())
-            if (round_dir / 'limen_output' / RESULTS_NAME).is_file()
+            if _SAFE_NAME.fullmatch(round_dir.name) and (round_dir / 'limen_output' / RESULTS_NAME).is_file()
         ]
         if rounds:
             experiments.append({'experiment': exp_dir.name, 'rounds': rounds})
@@ -198,7 +210,11 @@ def list_sweeps() -> list[dict[str, object]]:
 def list_uploads() -> list[str]:
     if not UPLOAD_DIR.is_dir():
         return []
-    return sorted(entry.name for entry in UPLOAD_DIR.iterdir() if entry.is_file())
+    return sorted(
+        entry.name
+        for entry in UPLOAD_DIR.iterdir()
+        if entry.is_file() and entry.name.endswith(UPLOAD_SUFFIXES) and _SAFE_NAME.fullmatch(entry.name)
+    )
 
 
 def save_upload(filename: str, data: bytes) -> str:
