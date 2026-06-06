@@ -67,6 +67,15 @@ def app_config() -> dict[str, object]:
     }
 
 
+def version_info() -> dict[str, object]:
+    """Build provenance baked into the image at build time (see Dockerfile)."""
+    return {
+        'sha': os.environ.get('GIT_SHA', ''),
+        'date': os.environ.get('BUILD_DATE', ''),
+        'subject': os.environ.get('GIT_SUBJECT', ''),
+    }
+
+
 def _first(params: dict[str, list[str]], key: str, default: str = '') -> str:
     values = params.get(key)
     return values[0] if values else default
@@ -95,6 +104,9 @@ class Handler(SimpleHTTPRequestHandler):
     def _handle_api(self, path: str, query: str) -> bool:
         if path == '/app-config':
             self.send_json(HTTPStatus.OK, app_config())
+            return True
+        if path == '/version':
+            self.send_json(HTTPStatus.OK, version_info())
             return True
         if path == '/api/klines':
             self.send_json(HTTPStatus.OK, {'series': datasets.list_klines()})
