@@ -9,8 +9,8 @@ services:
       CRUCIBLE_HOST: 0.0.0.0
       CRUCIBLE_PORT: 8877
       CRUCIBLE_DATA_ROOT: /data/experiments/crucible
-      ORIGO_ARROW_DIR: /data/experiments/crucible/binance_daily_spot_trades
-      ORIGO_PANEL_DIR: /data/experiments/crucible/btc_master_panel
+      CRUCIBLE_ARROW_DIR: /opt/arrow
+      CRUCIBLE_SWEEP_ROOT: /data/experiments/experiments
     ports:
       - "${CRUCIBLE_PORT:-8877}:8877"
     volumes:
@@ -18,6 +18,14 @@ services:
         source: ${CRUCIBLE_HOST_DATA_ROOT:-/data/experiments}
         target: /data/experiments
         read_only: false
+      # The tdw Arrow bar store, mounted read-only so klines load via Limen's
+      # HistoricalData.get_arrow_file from /opt/arrow/<series>/latest.arrow —
+      # the same pattern Furnace uses. external:true keeps this compose from
+      # creating or deleting the shared volume; the tdw-control-plane stack owns it.
+      - type: volume
+        source: arrow
+        target: /opt/arrow
+        read_only: true
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8877/health', timeout=5)"]
       interval: 10s
@@ -25,3 +33,10 @@ services:
       retries: 12
       start_period: 20s
     restart: unless-stopped
+
+volumes:
+  # External: this compose never creates or removes the shared bar store; the
+  # tdw-control-plane stack produces it. Override the name with ARROW_VOLUME_NAME.
+  arrow:
+    external: true
+    name: ${ARROW_VOLUME_NAME:-tdw-control-plane_arrow}

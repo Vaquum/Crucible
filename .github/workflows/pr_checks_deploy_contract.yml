@@ -77,8 +77,14 @@ jobs:
               errors.append('first mount target must be /data/experiments')
           if first.get('read_only') is True:
               errors.append('first mount must be writable')
-          if 'volumes' in (data or {}):
-              errors.append('top-level named volumes are forbidden')
+          arrow = next((mount for mount in mounts if mount.get('target') == '/opt/arrow'), None)
+          if arrow is None:
+              errors.append('missing the read-only /opt/arrow klines volume')
+          elif arrow.get('type') != 'volume' or arrow.get('source') != 'arrow' or arrow.get('read_only') is not True:
+              errors.append('/opt/arrow must mount external volume "arrow" read-only')
+          for name, spec in ((data or {}).get('volumes') or {}).items():
+              if not isinstance(spec, dict) or spec.get('external') is not True:
+                  errors.append(f'top-level volume {name!r} must be external:true')
           if errors:
               print('::error::Crucible deploy contract failed:')
               for error in errors:
