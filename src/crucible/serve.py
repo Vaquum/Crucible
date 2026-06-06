@@ -177,7 +177,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def log_message(self, format: str, *args: object) -> None:
-        return
+        del format, args
 
     def _authorized(self, path: str) -> bool:
         if ALLOW_ANONYMOUS:
