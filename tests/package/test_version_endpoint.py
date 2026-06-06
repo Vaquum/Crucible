@@ -1,12 +1,19 @@
 from __future__ import annotations
 
-import pathlib
+from http import HTTPStatus
 
 import pytest
 
 import crucible.serve as serve
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+class _CapturingHandler(serve.Handler):
+    """Drives `_handle_api` without a socket; records what `send_json` emits."""
+
+    sent: list[tuple[HTTPStatus, str | dict[str, object]]] = []
+
+    def send_json(self, status: HTTPStatus, payload: str | dict[str, object]) -> None:
+        type(self).sent.append((status, payload))
 
 
 def test_version_info_reads_build_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -26,7 +33,14 @@ def test_version_info_defaults_blank(monkeypatch: pytest.MonkeyPatch) -> None:
     assert serve.version_info() == {"sha": "", "date": "", "subject": ""}
 
 
-def test_version_route_is_wired() -> None:
-    source = (REPO_ROOT / "src" / "crucible" / "serve.py").read_text(encoding="utf-8")
-    assert "'/version'" in source
-    assert "version_info()" in source
+def test_version_route_returns_provenance(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GIT_SHA", "deadbee")
+    monkeypatch.setenv("BUILD_DATE", "2026-06-06T00:00:00Z")
+    monkeypatch.setenv("GIT_SUBJECT", "feat: x")
+    _CapturingHandler.sent.clear()
+    handler = _CapturingHandler.__new__(_CapturingHandler)
+    handled = handler._handle_api("/version", "")
+    assert handled is True
+    assert _CapturingHandler.sent == [
+        (HTTPStatus.OK, {"sha": "deadbee", "date": "2026-06-06T00:00:00Z", "subject": "feat: x"}),
+    ]
