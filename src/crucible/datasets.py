@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
+import tempfile
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import lru_cache
@@ -40,6 +41,10 @@ class DatasetRef:
     experiment: str = ''
     round_id: str = ''
     upload_id: str = ''
+    # Joins the `base_frame`/`compute_scatter` cache keys: each upload bumps
+    # the generation, so every pre-bump cache entry becomes unreachable
+    # instead of clearable-then-repopulatable by an in-flight read.
+    generation: int = 0
 
 
 def _safe(value: str, field: str) -> str:
@@ -59,7 +64,11 @@ def parse_ref(params: dict[str, list[str]]) -> DatasetRef:
             round_id=_safe((params.get('round') or [''])[0], 'round'),
         )
     if source == 'upload':
-        return DatasetRef(source, upload_id=_safe((params.get('upload') or [''])[0], 'upload'))
+        return DatasetRef(
+            source,
+            upload_id=_safe((params.get('upload') or [''])[0], 'upload'),
+            generation=upload_generation(),
+        )
     raise ValueError(f'unknown dataset source: {source!r}')
 
 
@@ -82,6 +91,23 @@ def _upload_path(upload_id: str) -> Path:
     if not path.is_file():
         raise FileNotFoundError(str(path))
     return path
+
+
+_upload_generation = 0
+_upload_generation_lock = threading.Lock()
+
+
+def upload_generation() -> int:
+    return _upload_generation
+
+
+def _bump_upload_generation() -> None:
+    # Under the lock the value is strictly increasing across concurrent
+    # saves; a lock-free `+= 1` can lose an increment and let a stale
+    # cache entry keep answering the current generation.
+    global _upload_generation
+    with _upload_generation_lock:
+        _upload_generation += 1
 
 
 @lru_cache(maxsize=8)
@@ -222,12 +248,11 @@ def save_upload(filename: str, data: bytes) -> str:
     if not name.endswith(UPLOAD_SUFFIXES):
         raise ValueError(f'upload must be one of {UPLOAD_SUFFIXES}: {filename!r}')
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    (UPLOAD_DIR / name).write_bytes(data)
-    base_frame.cache_clear()
+    # Write-then-rename so a concurrent reader sees whole old bytes or whole
+    # new bytes, never a truncated prefix. The temp name has no upload
+    # suffix, so listings never surface it.
+    with tempfile.NamedTemporaryFile(dir=UPLOAD_DIR, delete=False) as tmp:
+        tmp.write(data)
+    os.replace(tmp.name, UPLOAD_DIR / name)
+    _bump_upload_generation()
     return name
-
-
-def clear_uploads() -> None:
-    if UPLOAD_DIR.is_dir():
-        shutil.rmtree(UPLOAD_DIR)
-    base_frame.cache_clear()

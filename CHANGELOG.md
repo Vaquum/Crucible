@@ -1,3 +1,8 @@
+# v0.3.1
+
+- Make uploads safe under concurrent users: `save_upload` publishes atomically (temp file + `os.replace`) so a concurrent reader never sees a torn file, and upload dataset refs carry a generation that joins the frame/scatter cache keys, so an in-flight read can no longer re-populate a cleared cache with stale data (no `cache_clear()` remains).
+- Remove the destructive `POST /api/clear-uploads` endpoint and the "Clear all" button: with a shared upload bucket, any user could irreversibly delete every other user's uploads. Upload cleanup is now an operator action on `CRUCIBLE_UPLOAD_DIR`.
+
 # v0.3.0
 
 - Add a `/version` endpoint returning the build provenance (`sha`, `date`, `subject`) baked into the image at build time, so Smithy can render the actually-running version on its landing tile instead of a hand-set value.
