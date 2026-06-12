@@ -161,14 +161,7 @@ async function renderUploadPicker() {
     item.append(open);
     list.append(item);
   }
-  const actions = [input];
-  if (uploads.length > 0) actions.push(primaryButton("Clear all", clearUploads));
-  el.sourcePanel.replaceChildren(pickerRow(actions), uploads.length ? list : message("No uploads yet."));
-}
-
-async function clearUploads() {
-  await fetch(endpoints.clear_uploads || "api/clear-uploads", { method: "POST" });
-  renderUploadPicker();
+  el.sourcePanel.replaceChildren(pickerRow([input]), uploads.length ? list : message("No uploads yet."));
 }
 
 function message(text) { const div = document.createElement("div"); div.className = "picker-empty"; div.textContent = text; return div; }

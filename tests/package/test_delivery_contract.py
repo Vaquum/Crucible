@@ -22,7 +22,7 @@ def test_app_config_lists_sources_with_relative_endpoints() -> None:
     payload = serve.app_config()
     assert payload["app_name"] == "Crucible"
     endpoints = payload["endpoints"]
-    for key in ("klines", "sweeps", "uploads", "upload", "clear_uploads", "meta", "scatter"):
+    for key in ("klines", "sweeps", "uploads", "upload", "meta", "scatter"):
         assert key in endpoints
     assert all(not value.startswith("/") for value in endpoints.values())
 

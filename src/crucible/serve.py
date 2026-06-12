@@ -60,7 +60,6 @@ def app_config() -> dict[str, object]:
             'sweeps': 'api/sweeps',
             'uploads': 'api/uploads',
             'upload': 'api/upload',
-            'clear_uploads': 'api/clear-uploads',
             'meta': 'api/meta',
             'scatter': 'api/scatter',
         },
@@ -160,13 +159,7 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if parsed.path == '/api/upload':
                 name = datasets.save_upload(_first(parse_qs(parsed.query), 'filename'), self._read_body())
-                compute_scatter.cache_clear()
                 self.send_json(HTTPStatus.OK, {'upload': name})
-                return
-            if parsed.path == '/api/clear-uploads':
-                datasets.clear_uploads()
-                compute_scatter.cache_clear()
-                self.send_json(HTTPStatus.OK, {'cleared': True})
                 return
         except (ValueError, FileNotFoundError, KeyError) as exc:
             self.send_json(HTTPStatus.BAD_REQUEST, {'error': str(exc)})
