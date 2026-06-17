@@ -102,6 +102,10 @@ def test_delivery_files_match_sister_app_shape() -> None:
     compose = (REPO_ROOT / "deploy" / "docker-compose.yml").read_text(encoding="utf-8")
     assert 'CMD ["python", "-m", "crucible"]' in dockerfile
     assert "EXPOSE 8877" in dockerfile
+    # A broken runtime image must fail the build, not crash-loop prod: the
+    # Dockerfile smoke-imports Limen's klines entrypoint after install, so a
+    # dropped/undeclared transitive dep (e.g. pyarrow) is caught at build.
+    assert 'RUN python -c "from limen import HistoricalData"' in dockerfile
     assert "services:\n  crucible:" in compose
     assert "target: /data/experiments" in compose
     assert "target: /opt/arrow" in compose
