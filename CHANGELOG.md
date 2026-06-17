@@ -1,3 +1,8 @@
+# v0.3.2
+
+- Restore the `pyarrow>=15.0` dependency dropped in the dataset-sources slice. Limen's `from limen import HistoricalData` (Crucible's klines loader) imports `pyarrow` transitively but does not declare it, so once it left Crucible's own dependencies the import — and the whole service — failed with `ModuleNotFoundError: No module named 'pyarrow'`.
+- Smoke-import Limen's klines entrypoint in the Docker build (`RUN python -c "from limen import HistoricalData"`). Because Limen is pinned to `@main`, a future transitive-dependency drift now fails the image build loudly instead of shipping a container that crash-loops in production. `test_delivery_files_match_sister_app_shape` asserts the build-check stays.
+
 # v0.3.1
 
 - Make uploads safe under concurrent users: `save_upload` publishes atomically (temp file + `os.replace`) so a concurrent reader never sees a torn file, and upload dataset refs carry a generation that joins the frame/scatter cache keys, so an in-flight read can no longer re-populate a cleared cache with stale data (no `cache_clear()` remains).

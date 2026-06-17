@@ -13,6 +13,13 @@ COPY src /app/src
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir .
 
+# Fail the BUILD, not production, when the unpinned (Limen @ main) klines
+# source cannot be imported. A missing transitive dep — like pyarrow, which
+# Limen imports but does not declare — would otherwise only surface as a
+# crash-looping container after deploy. This line is why a runtime image that
+# cannot load its klines source can never ship.
+RUN python -c "from limen import HistoricalData"
+
 ARG GIT_SHA=""
 ENV GIT_SHA=$GIT_SHA
 ARG BUILD_DATE=""

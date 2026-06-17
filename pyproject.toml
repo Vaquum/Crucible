@@ -4,13 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Crucible"
-version = "0.3.1"
+version = "0.3.2"
 description = "Scatter explorer for klines, Furnace sweep results, and uploaded datasets."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "numpy>=2.0",
   "polars>=1.0",
+  # Limen's HistoricalData (the klines loader) imports pyarrow but does not
+  # declare it; Crucible must, or the klines source fails to import.
+  "pyarrow>=15.0",
   "vaquum_limen @ git+https://github.com/Vaquum/Limen.git@main",
 ]
 
