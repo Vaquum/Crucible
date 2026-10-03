@@ -65,8 +65,8 @@ jobs:
           if str(env.get('CRUCIBLE_PORT')) != '8877':
               errors.append('CRUCIBLE_PORT must be 8877 in container')
           ports = service.get('ports') or []
-          if '${CRUCIBLE_PORT:-8877}:8877' not in ports:
-              errors.append('ports must include ${CRUCIBLE_PORT:-8877}:8877')
+          if ports != ['127.0.0.1:${CRUCIBLE_PORT:-8877}:8877']:
+              errors.append('ports must be exactly ["127.0.0.1:${CRUCIBLE_PORT:-8877}:8877"]; Portal is the only entry point')
           mounts = service.get('volumes') or []
           first = mounts[0] if mounts else {}
           if first.get('type') != 'bind':

@@ -18,6 +18,10 @@ Default port: `8877`. Health: `/health`. App config: `/app-config`.
 
 For local iframe/browser preview only, set `CRUCIBLE_ALLOW_ANONYMOUS=1`.
 
+## Production access
+
+The deploy compose publishes Crucible on `127.0.0.1:8877` only. Portal (https://portal.vaquum.fi) is the single entry point and proxies Crucible from `http://127.0.0.1:8877`.
+
 ## Production data contract
 
 The container reads Arrow files from `/data/experiments/crucible` by default:
