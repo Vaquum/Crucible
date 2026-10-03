@@ -112,5 +112,6 @@ def test_delivery_files_match_sister_app_shape() -> None:
     assert "source: arrow" in compose
     assert "external: true" in compose
     assert "CRUCIBLE_ARROW_DIR: /opt/arrow" in compose
-    assert "${CRUCIBLE_PORT:-8877}:8877" in compose
+    ports = compose.split("    ports:\n", 1)[1].split("    volumes:\n", 1)[0]
+    assert ports == '      - "127.0.0.1:${CRUCIBLE_PORT:-8877}:8877"\n'
     assert "ORIGO_" not in compose

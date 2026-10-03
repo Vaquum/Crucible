@@ -12,7 +12,7 @@ services:
       CRUCIBLE_ARROW_DIR: /opt/arrow
       CRUCIBLE_SWEEP_ROOT: /data/experiments/experiments
     ports:
-      - "${CRUCIBLE_PORT:-8877}:8877"
+      - "127.0.0.1:${CRUCIBLE_PORT:-8877}:8877"
     volumes:
       - type: bind
         source: ${CRUCIBLE_HOST_DATA_ROOT:-/data/experiments}

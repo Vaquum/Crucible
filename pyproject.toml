@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Crucible"
-version = "0.3.2"
+version = "0.3.3"
 description = "Scatter explorer for klines, Furnace sweep results, and uploaded datasets."
 readme = "README.md"
 requires-python = ">=3.12"

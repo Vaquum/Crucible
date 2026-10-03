@@ -1,3 +1,7 @@
+# v0.3.3
+
+- Publish Crucible on the host loopback only (`127.0.0.1:${CRUCIBLE_PORT:-8877}:8877`). Portal (https://portal.vaquum.fi) is the single entry point and reaches Crucible at `http://127.0.0.1:8877` over host networking, so `http://37.27.112.167:8877` is no longer reachable from outside the host. `test_delivery_files_match_sister_app_shape` (required via `pr_checks_tests`) and the deploy-contract gate now require exactly that one loopback port mapping.
+
 # v0.3.2
 
 - Restore the `pyarrow>=15.0` dependency dropped in the dataset-sources slice. Limen's `from limen import HistoricalData` (Crucible's klines loader) imports `pyarrow` transitively but does not declare it, so once it left Crucible's own dependencies the import — and the whole service — failed with `ModuleNotFoundError: No module named 'pyarrow'`.
