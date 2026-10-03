@@ -1,3 +1,7 @@
+# v0.3.3
+
+- Sync `.github/rulesets/main.json` with the two parameters GitHub's rulesets API now returns on Protect-Main's `pull_request` rule: `require_extra_approval_for_unattributed_changes` (`true`) and `dismissal_restriction` (disabled, no actors). The ruleset itself is unchanged since 2026-06-06; without these fields `pr_checks_ruleset` reported drift on every PR. The gate's live-shape fixtures carry the same fields so each drift test still isolates the one difference it exists to catch.
+
 # v0.3.2
 
 - Restore the `pyarrow>=15.0` dependency dropped in the dataset-sources slice. Limen's `from limen import HistoricalData` (Crucible's klines loader) imports `pyarrow` transitively but does not declare it, so once it left Crucible's own dependencies the import — and the whole service — failed with `ModuleNotFoundError: No module named 'pyarrow'`.
