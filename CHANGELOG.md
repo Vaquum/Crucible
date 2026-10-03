@@ -1,6 +1,10 @@
-# v0.3.3
+# v0.3.4
 
 - Publish Crucible on the host loopback only (`127.0.0.1:${CRUCIBLE_PORT:-8877}:8877`). Portal (https://portal.vaquum.fi) is the single entry point and reaches Crucible at `http://127.0.0.1:8877` over host networking, so `http://37.27.112.167:8877` is no longer reachable from outside the host. `test_delivery_files_match_sister_app_shape` (required via `pr_checks_tests`) and the deploy-contract gate now require exactly that one loopback port mapping.
+
+# v0.3.3
+
+- Sync `.github/rulesets/main.json` with the two parameters GitHub's rulesets API now returns on Protect-Main's `pull_request` rule: `require_extra_approval_for_unattributed_changes` (`true`) and `dismissal_restriction` (disabled, no actors). The ruleset itself is unchanged since 2026-06-06; without these fields `pr_checks_ruleset` reported drift on every PR. The gate's live-shape fixtures carry the same fields so each drift test still isolates the one difference it exists to catch.
 
 # v0.3.2
 
