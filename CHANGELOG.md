@@ -1,3 +1,7 @@
+# v0.3.5
+
+- Stop automatic Copilot code review on every push; reviews remain available on request.
+
 # v0.3.4
 
 - Publish Crucible on the host loopback only (`127.0.0.1:${CRUCIBLE_PORT:-8877}:8877`). Portal (https://portal.vaquum.fi) is the single entry point and reaches Crucible at `http://127.0.0.1:8877` over host networking, so `http://37.27.112.167:8877` is no longer reachable from outside the host. `test_delivery_files_match_sister_app_shape` (required via `pr_checks_tests`) and the deploy-contract gate now require exactly that one loopback port mapping.
